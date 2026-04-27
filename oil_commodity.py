@@ -1,50 +1,32 @@
 import yfinance as yf
 import pandas as pd
-from datetime import datetime
 
-# get_market function 
-def get_market_monitoring():
-    tickers = {
-        "Brent_Oil": "BZ=F",
-        "WTI_Oil": "CL=F",
-        "Dollar_Index": "DX-Y.NYB"
-    }
-    
-    results = []
+tickers = {
+    "WTI": "CL=F",
+    "USD_INDEX": "DX-Y.NYB",
+    "BRENT": "BZ=F"
+}
 
-    print(f"--- Collecte du {datetime.now().strftime('%Y-%m-%d %H:%M:%S')} ---")
 
-    for name, symbol in tickers.items():
-        try:
-            ticker_obj = yf.Ticker(symbol)
-            
-          
-            data = ticker_obj.history(period="1d", interval="1m")
-            
-            if not data.empty:
-                last_row = data.iloc[-1]
-                
-                results.append({
-                    "Indicateur": name,
-                    "Symbol": symbol,
-                    "Open": round(last_row['Open'], 3),
-                    "High": round(last_row['High'], 3),
-                    "Low": round(last_row['Low'], 3),
-                    "Close": round(last_row['Close'], 3),
-                    "Volume": int(last_row['Volume'])
-                })
-            else:
-                print(f"⚠️ Pas de données pour {name} (Marché fermé ?)")
-                
-        except Exception as e:
-            print(f"❌ Erreur sur {name}: {e}")
+interval = "1m" 
 
-    df_output = pd.DataFrame(results)
-    return df_output
-if __name__ == "__main__":
-    monitor_df = get_market_monitoring()
-    
-    if not monitor_df.empty:
-        print(monitor_df.to_string(index=False))
-    else:
-        print("Aucune donnée collectée.")
+data = {}
+
+for name, ticker in tickers.items():
+    df = yf.download(
+        ticker,
+        period="7d",      
+        interval=interval
+    )
+
+    df = df[["Open", "High", "Low", "Close", "Volume"]]
+
+    df.columns = [f"{name}_{col}" for col in df.columns]
+
+    data[name] = df
+
+final_df = pd.concat(data.values(), axis=1)
+
+final_df = final_df.dropna()
+
+final_df.to_csv(f"oil_intraday_{interval}.csv")
