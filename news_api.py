@@ -47,5 +47,11 @@ df_hourly = df_news.resample('1h').agg({
     'source': 'count'
 }).rename(columns={'source': 'news_count'})
 
+df = pd.read_csv("news_wti_hourly_7d.csv")
+df['timestamp'] = pd.to_datetime(df['timestamp'])
+df = df.set_index('timestamp')
+df_all = pd.concat([df, df_hourly])
+df_all = df_all[~df_all.index.duplicated(keep="last")]
 
-df_hourly.to_csv("news_wti_hourly_7d.csv")
+df_all = df_all.sort_index()
+df_all.to_csv("news_wti_hourly_7d.csv")
