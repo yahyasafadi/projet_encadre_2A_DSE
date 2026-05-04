@@ -1,6 +1,6 @@
 from pygooglenews import GoogleNews
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import time
 
 def fetch_oil_news_7d():
@@ -22,7 +22,7 @@ def fetch_oil_news_7d():
                 source_name = entry.source.get('title', entry.source.get('text', 'Unknown'))
             
             all_articles.append({
-                'timestamp': entry.get('published', datetime.now()),
+                'timestamp': entry.get('published', datetime.now(timezone.utc)),
                 'title': entry.get('title', 'No Title'),
                 'source': source_name,
                 'link': entry.get('link', '')
@@ -32,7 +32,8 @@ def fetch_oil_news_7d():
 
     df = pd.DataFrame(all_articles)
     
-    df['timestamp'] = pd.to_datetime(df['timestamp'])
+   
+    df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed', utc=True)
     
     df = df.sort_values('timestamp')
     
@@ -48,8 +49,11 @@ df_hourly = df_news.resample('1h').agg({
 }).rename(columns={'source': 'news_count'})
 
 df = pd.read_csv("news_wti_hourly_7d.csv")
-df['timestamp'] = pd.to_datetime(df['timestamp'])
-df = df.set_index('timestamp')
+df['timestamp'] = pd.to_datetime(df['timestamp'], format='mixed', utc=True, errors='coerce')
+
+
+df.set_index('timestamp', inplace=True) 
+
 df_all = pd.concat([df, df_hourly])
 df_all = df_all[~df_all.index.duplicated(keep="last")]
 

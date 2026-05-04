@@ -8,14 +8,14 @@ tickers = {
 }
 
 
-interval = "1m" 
+interval = "1h" 
 
 data = {}
 
 for name, ticker in tickers.items():
     df = yf.download(
         ticker,
-        period="7d",      
+        period="10d",      
         interval=interval
     )
 
