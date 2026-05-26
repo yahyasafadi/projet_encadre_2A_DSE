@@ -15,7 +15,7 @@ data = {}
 for name, ticker in tickers.items():
     df = yf.download(
         ticker,
-        period="10d",      
+        period="1d",      
         interval=interval
     )
 
@@ -30,3 +30,4 @@ final_df = pd.concat(data.values(), axis=1)
 final_df = final_df.dropna()
 
 final_df.to_csv(f"oil_intraday_{interval}.csv")
+print(final_df.tail(20))
