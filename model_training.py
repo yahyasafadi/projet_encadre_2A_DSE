@@ -1,70 +1,127 @@
 import pandas as pd
 import numpy as np
-from sklearn.ensemble import RandomForestClassifier
+
 from sklearn.model_selection import TimeSeriesSplit
-from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
 from sklearn.preprocessing import StandardScaler
-import matplotlib.pyplot as plt
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+
+from sklearn.metrics import accuracy_score, f1_score, roc_auc_score
+
+from xgboost import XGBClassifier
+from lightgbm import LGBMClassifier
+
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings("ignore")
 
-# ── CHARGEMENT ───────────────────────────────────────────────────
-df = pd.read_csv('wti_features_v3.csv', parse_dates=['Datetime'])
-df = df.sort_values('Datetime').reset_index(drop=True)  # TRI CHRONOLOGIQUE OBLIGATOIRE
 
-# ── TARGET ───────────────────────────────────────────────────────
-df['target'] = (df['WTI_Close'].shift(-1) > df['WTI_Close']).astype(int)
+df = pd.read_csv("wti_features_v3.csv", parse_dates=["Datetime"])
+df = df.sort_values("Datetime").reset_index(drop=True)
+
+df_price = pd.read_csv("data_merged.csv", parse_dates=["Datetime"])
+df_price = df_price.rename(columns={"WTI_('Close', 'CL=F')": "WTI_Close"})
+
+df = df.merge(df_price[["Datetime", "WTI_Close"]], on="Datetime", how="left")
+
+ret_12h = df["WTI_Close"].shift(-48) / df["WTI_Close"] - 1
+df["target"] = (ret_12h > 0).astype(int)
+
 df = df.dropna()
 
-exclude = ['Datetime', 'target', 'WTI_Close']
-X = df[[c for c in df.columns if c not in exclude]]
-y = df['target']
+FEATURES = [
+    'Close_SMA20_ratio', 'EMA_ratio', 'RSI_14', 'return_12h',
+    'Spread_Brent_WTI', 'Corr_Brent_USD_30', 'ADX_proxy',
+    'session_europe', 'MACD_slope', 'volatility_ratio',
+    'hour_sin', 'hour_cos', 'volume_ratio',
+    'USD_return', 'sentiment_score', 'sentiment_available'
+]
 
-# ── TIME SERIES SPLIT ─────────────────────────────────────────────
-scaler = StandardScaler()
+X = df[FEATURES]
+y = df["target"]
+
+
+
+models = {
+    "Logistic Regression": LogisticRegression(
+        class_weight="balanced",
+        max_iter=2000
+    ),
+
+    "Random Forest": RandomForestClassifier(
+        n_estimators=300,
+        max_depth=5,
+        min_samples_leaf=30,
+        class_weight="balanced",
+        random_state=42,
+        n_jobs=-1
+    ),
+
+    "Gradient Boosting": GradientBoostingClassifier(
+        n_estimators=200,
+        learning_rate=0.05,
+        max_depth=3,
+        random_state=42
+    ),
+
+    "XGBoost": XGBClassifier(
+        n_estimators=300,
+        max_depth=4,
+        learning_rate=0.05,
+        subsample=0.8,
+        colsample_bytree=0.8,
+        eval_metric="logloss",
+        random_state=42
+    ),
+
+    "LightGBM": LGBMClassifier(
+        n_estimators=300,
+        learning_rate=0.05,
+        num_leaves=31,
+        random_state=42
+    )
+}
+
+
 tscv = TimeSeriesSplit(n_splits=5)
+
 results = []
 
-for fold, (train_idx, test_idx) in enumerate(tscv.split(X)):
-    X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
-    y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
+for name, model in models.items():
 
-    # Normalisation FIT sur train uniquement
-    X_train_scaled = scaler.fit_transform(X_train)
-    X_test_scaled  = scaler.transform(X_test)
+    accs, f1s, aucs = [], [], []
 
-    model = RandomForestClassifier(n_estimators=100, random_state=42, n_jobs=-1)
-    model.fit(X_train_scaled, y_train)
+    print(f"\n===== {name} =====")
 
-    y_pred       = model.predict(X_test_scaled)
-    y_pred_proba = model.predict_proba(X_test_scaled)[:, 1]
+    for train_idx, test_idx in tscv.split(X):
 
-    acc = accuracy_score(y_test, y_pred)
-    f1  = f1_score(y_test, y_pred, average='weighted')
-    auc = roc_auc_score(y_test, y_pred_proba)
+        X_train, X_test = X.iloc[train_idx], X.iloc[test_idx]
+        y_train, y_test = y.iloc[train_idx], y.iloc[test_idx]
 
-    results.append({'fold': fold+1, 'accuracy': acc, 'f1_score': f1, 'auc_roc': auc})
-    print(f"Fold {fold+1} | Accuracy: {acc:.4f} | F1: {f1:.4f} | AUC: {auc:.4f}")
+        scaler = StandardScaler()
 
-# ── RÉSUMÉ ───────────────────────────────────────────────────────
-df_results = pd.DataFrame(results)
-print("\n===== RÉSUMÉ =====")
-print(f"Accuracy moyenne : {df_results['accuracy'].mean():.4f} ± {df_results['accuracy'].std():.4f}")
-print(f"F1 moyenne       : {df_results['f1_score'].mean():.4f} ± {df_results['f1_score'].std():.4f}")
-print(f"AUC-ROC moyenne  : {df_results['auc_roc'].mean():.4f} ± {df_results['auc_roc'].std():.4f}")
+        X_train = scaler.fit_transform(X_train)
+        X_test = scaler.transform(X_test)
 
-# ── GRAPHIQUE ────────────────────────────────────────────────────
-plt.figure(figsize=(8, 4))
-plt.plot(df_results['fold'], df_results['accuracy'], 'o-', label='Accuracy')
-plt.plot(df_results['fold'], df_results['f1_score'],  's-', label='F1-score')
-plt.plot(df_results['fold'], df_results['auc_roc'],   '^-', label='AUC-ROC')
-plt.xlabel('Fold')
-plt.ylabel('Score')
-plt.title('Performance par fold (TimeSeriesSplit)')
-plt.legend()
-plt.ylim(0, 1)
-plt.grid(True, alpha=0.3)
-plt.tight_layout()
-plt.savefig('ts_split_performance.png', dpi=150)
-plt.show()
-print("✅ Graphique sauvegardé : ts_split_performance.png")
+        model.fit(X_train, y_train)
+
+        y_pred = model.predict(X_test)
+        y_prob = model.predict_proba(X_test)[:, 1]
+
+        accs.append(accuracy_score(y_test, y_pred))
+        f1s.append(f1_score(y_test, y_pred))
+        aucs.append(roc_auc_score(y_test, y_prob))
+
+    results.append({
+        "Model": name,
+        "Accuracy": np.mean(accs),
+        "F1": np.mean(f1s),
+        "AUC": np.mean(aucs)
+    })
+
+
+results_df = pd.DataFrame(results)
+results_df = results_df.sort_values("AUC", ascending=False)
+
+print("\n===== FINAL COMPARISON =====")
+print(results_df.round(4))

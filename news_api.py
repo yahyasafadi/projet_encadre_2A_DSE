@@ -3,11 +3,11 @@ import pandas as pd
 from datetime import datetime, timedelta, timezone
 import time
 
-def fetch_oil_news_7d():
+def fetch_oil_news():
     gn = GoogleNews(lang='en', country='US')
     all_articles = []
     
-    for i in range(1):
+    for i in range(13):
         target_date = datetime.now() - timedelta(days=i)
         date_str = target_date.strftime('%Y-%m-%d')
         next_day = (target_date + timedelta(days=1)).strftime('%Y-%m-%d')
@@ -39,7 +39,7 @@ def fetch_oil_news_7d():
     
     return df
 
-df_news = fetch_oil_news_7d()
+df_news = fetch_oil_news()
 
 df_news.set_index('timestamp', inplace=True)
 
