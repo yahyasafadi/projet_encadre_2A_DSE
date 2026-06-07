@@ -1,0 +1,16 @@
+feature,vif,statut
+Close_SMA20_ratio,18.994260932890832,❌ Élevé
+EMA_ratio,9.8364299979703,⚠️  Modéré
+MACD_slope,2.708187297733061,✅ OK
+RSI_14,3.594731245315847,✅ OK
+return_12min,9.987608640657793,⚠️  Modéré
+return_60min,3.647632609820271,✅ OK
+Spread_Brent_WTI,1.0305479794227514,✅ OK
+Corr_Brent_USD_30,1.1011554064136242,✅ OK
+ADX_proxy,1.5530365293576212,✅ OK
+volatility_20min,1.8829773395545581,✅ OK
+session_europe,3.19450603039202,✅ OK
+session_us,6.310307118591049,⚠️  Modéré
+hour_sin,5.441448498213821,⚠️  Modéré
+hour_cos,2.74067294706576,✅ OK
+sentiment_score,5436807.0399941215,❌ Élevé

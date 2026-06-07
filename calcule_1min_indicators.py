@@ -34,10 +34,6 @@ print(f"✅ {len(df)} lignes chargées")
 print(f"   Colonnes : {list(df.columns)}")
 
 # ── FEATURES TECHNIQUES ──────────────────────────────────────────
-# SMA 20 minutes
-sma20 = df['WTI_Close'].rolling(20).mean()
-df['Close_SMA20_ratio'] = df['WTI_Close'] / sma20
-
 # EMA 12 et 26 minutes
 ema12 = df['WTI_Close'].ewm(span=12, adjust=False).mean()
 ema26 = df['WTI_Close'].ewm(span=26, adjust=False).mean()
@@ -58,11 +54,12 @@ df['RSI_14'] = 100 - (100 / (1 + gain / loss))
 df['return_12min'] = df['WTI_Close'].pct_change(12)
 df['return_60min'] = df['WTI_Close'].pct_change(60)
 
-# Spread Brent - WTI
+# Spread Brent - WTI + différenciation pour stationnarité
 if 'BRENT_Close' in df.columns:
-    df['Spread_Brent_WTI'] = df['BRENT_Close'] - df['WTI_Close']
+    df['Spread_Brent_WTI']      = df['BRENT_Close'] - df['WTI_Close']
+    df['Spread_Brent_WTI_diff'] = df['Spread_Brent_WTI'].diff()  # différenciée ✅
 else:
-    df['Spread_Brent_WTI'] = 0
+    df['Spread_Brent_WTI_diff'] = 0
 
 # Corrélation Brent/USD sur 30 minutes
 if 'BRENT_Close' in df.columns and 'USD_Close' in df.columns:
@@ -110,7 +107,6 @@ if 'title' in df.columns:
         batch_size= 32
     )
 
-    # On calcule le sentiment uniquement sur les heures uniques (pas chaque minute)
     df_unique = df[['Datetime', 'title']].copy()
     df_unique['hour'] = df_unique['Datetime'].dt.floor('h')
     df_hours = df_unique.drop_duplicates(subset='hour')[['hour', 'title']].reset_index(drop=True)
@@ -137,7 +133,6 @@ if 'title' in df.columns:
 
     df_hours['sentiment_score'] = scores
 
-    # Merge du sentiment sur toutes les minutes
     df['hour'] = df['Datetime'].dt.floor('h')
     df = df.merge(df_hours[['hour', 'sentiment_score']], on='hour', how='left')
     df['sentiment_score'] = df['sentiment_score'].fillna(0.0)
@@ -150,11 +145,14 @@ else:
 df['target'] = (df['WTI_Close'].shift(-1) > df['WTI_Close']).astype(int)
 
 # ── EXPORT ───────────────────────────────────────────────────────
+# Close_SMA20_ratio supprimée (VIF=18.99 trop élevé)
+# Spread_Brent_WTI remplacée par Spread_Brent_WTI_diff (non stationnaire → différenciée)
+# sentiment_score gardée car FinBERT fonctionne maintenant
 FEATURES = [
     'Datetime', 'WTI_Close',
-    'Close_SMA20_ratio', 'EMA_ratio', 'MACD_slope',
+    'EMA_ratio', 'MACD_slope',
     'RSI_14', 'return_12min', 'return_60min',
-    'Spread_Brent_WTI', 'Corr_Brent_USD_30',
+    'Spread_Brent_WTI_diff', 'Corr_Brent_USD_30',
     'ADX_proxy', 'volatility_20min',
     'session_europe', 'session_us',
     'hour_sin', 'hour_cos',
