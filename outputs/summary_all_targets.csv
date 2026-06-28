@@ -1,0 +1,7 @@
+Target,Modèle,Acc Mean,Acc Std,Acc Global
+BUY / SELL,LogisticRegression,0.5392,0.0345,0.5392
+BUY / SELL,RandomForest,0.5324,0.0294,0.5324
+BUY / SELL,XGBoost,0.5260,0.0429,0.5260
+VOLATILITÉ,LogisticRegression,0.6148,0.0932,0.6148
+VOLATILITÉ,RandomForest,0.6920,0.0306,0.6920
+VOLATILITÉ,XGBoost,0.7036,0.0734,0.7036

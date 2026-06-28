@@ -1,0 +1,4 @@
+Modèle,Acc Mean,Acc Std,Acc Global
+LogisticRegression,0.5392,0.0345,0.5392
+RandomForest,0.5324,0.0294,0.5324
+XGBoost,0.5260,0.0429,0.5260

@@ -7,7 +7,7 @@ def fetch_oil_news():
     gn = GoogleNews(lang='en', country='US')
     all_articles = []
     
-    for i in range(13):
+    for i in range(7):
         target_date = datetime.now() - timedelta(days=i)
         date_str = target_date.strftime('%Y-%m-%d')
         next_day = (target_date + timedelta(days=1)).strftime('%Y-%m-%d')
